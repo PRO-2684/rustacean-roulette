@@ -12,7 +12,10 @@ license = "MIT"
 authors = ["PRO-2684"]
 
 [dependencies]
+env_logger = "0.11.7"
 frankenstein = { version = "0.40.0", features = ["client-reqwest"] }
+log = "0.4.27"
 rand = "0.9.0"
 serde = { version = "1.0.219", features = ["derive"] }
+tokio = { version = "1.44.1", features = ["rt-multi-thread", "macros"] }
 toml = "0.8.20"
