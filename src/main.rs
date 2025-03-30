@@ -1,10 +1,6 @@
 use env_logger::Env;
 use frankenstein::{
-    AsyncTelegramApi, Error,
-    client_reqwest::Bot,
-    methods::{GetChatMemberParams, GetChatParams, GetUpdatesParams},
-    types::{ChatMember, ChatType, Message},
-    updates::UpdateContent,
+    client_reqwest::Bot, methods::{GetChatMemberParams, GetChatParams, GetUpdatesParams, RestrictChatMemberParams, SendMessageParams}, types::{ChatMember, ChatPermissions, ChatType, Message, ReplyParameters}, updates::UpdateContent, AsyncTelegramApi, Error
 };
 use log::{debug, error, info};
 use russian_roulette::{Config, Roulette, RouletteConfig, is_roulette};
@@ -19,8 +15,9 @@ async fn main() -> Result<(), Error> {
     let Config {
         token,
         whitelist,
-        game,
+        game: roulette_config,
     } = read_config();
+    let roulette_config = Box::leak(Box::new(roulette_config));
 
     // Create a new Telegram Bot
     let bot = Box::leak(Box::new(Bot::new(&token)));
@@ -31,7 +28,7 @@ async fn main() -> Result<(), Error> {
 
     // TODO: setMyDefaultAdministratorRights / setMyCommands
 
-    let group_data = init_group_data(bot, me.id, &whitelist, &game).await;
+    let group_data = init_group_data(bot, me.id, &whitelist, &roulette_config).await;
 
     // Handle incoming messages
     let mut update_params = GetUpdatesParams::builder().build();
@@ -60,8 +57,24 @@ async fn main() -> Result<(), Error> {
                     let text = msg.text.as_ref();
                     if is_roulette(text, &username) {
                         tokio::spawn(async {
-                            let roulette = group_data.get(&msg.chat.id).unwrap();
-                            handle_roulette(bot, msg, roulette).await;
+                            let chat_id = msg.chat.id;
+                            let message_id = msg.message_id;
+                            let roulette = group_data.get(&chat_id).unwrap();
+                            let reply = handle_roulette(bot, msg, roulette, roulette_config).await;
+                            let Some(reply) = reply else {
+                                return;
+                            };
+                            let reply_param = ReplyParameters::builder()
+                                .message_id(message_id)
+                                .build();
+                            let send_message_param = SendMessageParams::builder()
+                                .chat_id(chat_id)
+                                .text(reply)
+                                .reply_parameters(reply_param)
+                                .build();
+                            if let Err(err) = bot.send_message(&send_message_param).await {
+                                error!("Failed to send message: {err}");
+                            }
                         });
                     }
                 }
@@ -72,7 +85,6 @@ async fn main() -> Result<(), Error> {
         }
     }
 }
-
 
 fn setup_logger() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info"))
@@ -101,7 +113,12 @@ fn read_config() -> Config {
     config
 }
 
-async fn init_group_data(bot: &Bot, user_id: u64, whitelist: &[i64], game: &RouletteConfig) -> &'static mut HashMap<i64, Mutex<Roulette>> {
+async fn init_group_data(
+    bot: &Bot,
+    user_id: u64,
+    whitelist: &[i64],
+    game: &RouletteConfig,
+) -> &'static mut HashMap<i64, Mutex<Roulette>> {
     // Group-wise data (mapping group ID to Roulette instance)
     let group_data = Box::leak(Box::new(HashMap::new()));
     for group_id in whitelist {
@@ -152,6 +169,95 @@ async fn init_group_data(bot: &Bot, user_id: u64, whitelist: &[i64], game: &Roul
     group_data
 }
 
-async fn handle_roulette(bot: &Bot, msg: Message, roulette: &Mutex<Roulette>) {
+async fn handle_roulette(bot: &Bot, msg: Message, roulette: &Mutex<Roulette>, roulette_config: &RouletteConfig) -> Option<String> {
+    const RESTRICTED_PERM: ChatPermissions = ChatPermissions {
+        can_send_messages: Some(false),
+        can_send_audios: Some(false),
+        can_send_documents: Some(false),
+        can_send_photos: Some(false),
+        can_send_videos: Some(false),
+        can_send_video_notes: Some(false),
+        can_send_voice_notes: Some(false),
+        can_send_polls: Some(false),
+        can_send_other_messages: Some(false),
+        can_add_web_page_previews: None,
+        can_change_info: None,
+        can_invite_users: None,
+        can_pin_messages: None,
+        can_manage_topics: None,
+    };
+    // Get chat and sender
+    let chat = &msg.chat;
+    let Some(sender) = &msg.from else {
+        error!("Cannot determine sender of message: {msg:?}");
+        return None;
+    };
+    // Determine sender's role
+    let get_chat_member_param = GetChatMemberParams::builder()
+        .chat_id(chat.id)
+        .user_id(sender.id)
+        .build();
+    let member = match bot.get_chat_member(&get_chat_member_param).await {
+        Ok(res) => res.result,
+        Err(err) => {
+            error!("Failed to get chat member info for user ID {}: {err}", sender.id);
+            return None;
+        }
+    };
+    let is_admin = matches!(member, ChatMember::Creator(_) | ChatMember::Administrator(_));
+    if is_admin {
+        return Some("Cannot play roulette as an admin".to_string());
+    }
+    // Check the roulette status
+    let mut roulette = roulette.lock().await;
+    let result = match roulette.fire() {
+        Some(result) => result,
+        None => {
+            // Reload the gun
+            *roulette = roulette_config.start();
+            let (bullets, chambers) = roulette_config.info();
+            let send_message_param = SendMessageParams::builder()
+                .chat_id(chat.id)
+                .text(format!(
+                    "The gun has been reloaded, with {bullets} bullets in {chambers} chambers."
+                ))
+                .build();
+            if let Err(err) = bot.send_message(&send_message_param).await {
+                error!("Failed to send message: {err}");
+            }
 
+            // Fire the roulette again
+            let Some(result) = roulette.fire() else {
+                error!("Failed to fire roulette!");
+                return Some("You're lucky that the gun got jammed.".to_string());
+            };
+            result
+        }
+    };
+
+    // Apply action and return the message
+    let name = sender.username.as_deref();
+    let name = name.unwrap_or(&sender.first_name);
+    if result {
+        // Restrict the user for a certain period
+        let until = roulette_config.random_mute_until();
+        let restrict_param = RestrictChatMemberParams::builder()
+            .chat_id(chat.id)
+            .user_id(sender.id)
+            .permissions(RESTRICTED_PERM)
+            .until_date(until)
+            .build();
+        match bot.restrict_chat_member(&restrict_param).await {
+            Ok(_) => {
+                info!("Restricted user {} in group ID {}", name, chat.id);
+            }
+            Err(err) => {
+                error!("Failed to restrict user {}: {err}", name);
+                return None;
+            }
+        };
+        Some(format!("{name} is shot."))
+    } else {
+        Some(format!("{name} is safe and sound."))
+    }
 }

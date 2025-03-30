@@ -24,7 +24,7 @@ pub fn bullets() -> usize {
 
 /// Default minimum time to mute in seconds.
 pub fn min_mute_time() -> u32 {
-    10
+    60
 }
 
 /// Default maximum time to mute in seconds.
