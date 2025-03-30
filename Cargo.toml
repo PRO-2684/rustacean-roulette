@@ -1,0 +1,14 @@
+[package]
+name = "russian-roulette"
+version = "0.1.0"
+readme = "README.md"
+description = "A simple Russian Roulette Telegram bot implemented in Rust."
+keywords = ["rust", "game", "russian-roulette", "telegram-bot"]
+categories = []
+edition = "2024"
+include = ["/src", "README.md"]
+repository = "https://github.com/PRO-2684/russian-roulette"
+license = "MIT"
+authors = ["PRO-2684"]
+
+[dependencies]
