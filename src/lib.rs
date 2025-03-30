@@ -88,7 +88,10 @@ impl Roulette {
 ///
 /// - `text` - The text to check.
 /// - `username` - The username of the bot.
-pub fn is_roulette(text: &str, username: &str) -> bool {
+pub fn is_roulette(text: Option<&String>, username: &str) -> bool {
+    let Some(text) = text else {
+        return false;
+    };
     let text = text.trim();
     let (command, _arg) = text.split_once(' ').unwrap_or((text, ""));
 
