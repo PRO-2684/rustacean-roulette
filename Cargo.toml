@@ -12,3 +12,7 @@ license = "MIT"
 authors = ["PRO-2684"]
 
 [dependencies]
+frankenstein = { version = "0.40.0", features = ["client-reqwest"] }
+rand = "0.9.0"
+serde = { version = "1.0.219", features = ["derive"] }
+toml = "0.8.20"
