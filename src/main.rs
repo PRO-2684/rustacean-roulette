@@ -1,6 +1,13 @@
 use env_logger::Env;
 use frankenstein::{
-    client_reqwest::Bot, methods::{GetChatMemberParams, GetChatParams, GetUpdatesParams, RestrictChatMemberParams, SendMessageParams}, types::{ChatMember, ChatPermissions, ChatType, Message, ReplyParameters}, updates::UpdateContent, AsyncTelegramApi, Error
+    AsyncTelegramApi, Error,
+    client_reqwest::Bot,
+    methods::{
+        GetChatMemberParams, GetChatParams, GetUpdatesParams, RestrictChatMemberParams,
+        SendMessageParams,
+    },
+    types::{ChatMember, ChatPermissions, ChatType, Message, ReplyParameters},
+    updates::UpdateContent,
 };
 use log::{debug, error, info};
 use russian_roulette::{Config, Roulette, RouletteConfig, is_roulette};
@@ -64,9 +71,8 @@ async fn main() -> Result<(), Error> {
                             let Some(reply) = reply else {
                                 return;
                             };
-                            let reply_param = ReplyParameters::builder()
-                                .message_id(message_id)
-                                .build();
+                            let reply_param =
+                                ReplyParameters::builder().message_id(message_id).build();
                             let send_message_param = SendMessageParams::builder()
                                 .chat_id(chat_id)
                                 .text(reply)
@@ -169,7 +175,12 @@ async fn init_group_data(
     group_data
 }
 
-async fn handle_roulette(bot: &Bot, msg: Message, roulette: &Mutex<Roulette>, roulette_config: &RouletteConfig) -> Option<String> {
+async fn handle_roulette(
+    bot: &Bot,
+    msg: Message,
+    roulette: &Mutex<Roulette>,
+    roulette_config: &RouletteConfig,
+) -> Option<String> {
     const RESTRICTED_PERM: ChatPermissions = ChatPermissions {
         can_send_messages: Some(false),
         can_send_audios: Some(false),
@@ -200,11 +211,17 @@ async fn handle_roulette(bot: &Bot, msg: Message, roulette: &Mutex<Roulette>, ro
     let member = match bot.get_chat_member(&get_chat_member_param).await {
         Ok(res) => res.result,
         Err(err) => {
-            error!("Failed to get chat member info for user ID {}: {err}", sender.id);
+            error!(
+                "Failed to get chat member info for user ID {}: {err}",
+                sender.id
+            );
             return None;
         }
     };
-    let is_admin = matches!(member, ChatMember::Creator(_) | ChatMember::Administrator(_));
+    let is_admin = matches!(
+        member,
+        ChatMember::Creator(_) | ChatMember::Administrator(_)
+    );
     if is_admin {
         return Some("Cannot play roulette as an admin".to_string());
     }

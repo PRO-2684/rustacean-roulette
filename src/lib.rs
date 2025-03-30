@@ -1,4 +1,4 @@
-use rand::{seq::index::sample, Rng};
+use rand::{Rng, seq::index::sample};
 use serde::Deserialize;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -38,12 +38,27 @@ impl RouletteConfig {
     /// Start a new game of Russian Roulette with the given configuration.
     pub fn start(&self) -> Roulette {
         // Sanity check
-        assert!(self.chambers > 0, "Number of chambers must be greater than 0");
+        assert!(
+            self.chambers > 0,
+            "Number of chambers must be greater than 0"
+        );
         assert!(self.bullets > 0, "Number of bullets must be greater than 0");
-        assert!(self.bullets <= self.chambers, "Number of bullets must be less than or equal to number of chambers");
-        assert!(self.min_mute_time >= 30, "Minimum mute time must be greater than or equal to 30 seconds");
-        assert!(self.max_mute_time <= 3600, "Maximum mute time must be less than or equal to 3600 seconds"); // FIXME: 365 days
-        assert!(self.min_mute_time <= self.max_mute_time, "Minimum mute time must be less than or equal to maximum mute time");
+        assert!(
+            self.bullets <= self.chambers,
+            "Number of bullets must be less than or equal to number of chambers"
+        );
+        assert!(
+            self.min_mute_time >= 30,
+            "Minimum mute time must be greater than or equal to 30 seconds"
+        );
+        assert!(
+            self.max_mute_time <= 3600,
+            "Maximum mute time must be less than or equal to 3600 seconds"
+        ); // FIXME: 365 days
+        assert!(
+            self.min_mute_time <= self.max_mute_time,
+            "Minimum mute time must be less than or equal to maximum mute time"
+        );
 
         // Initialize the chambers with `false` (empty).
         let mut chambers = Vec::with_capacity(self.chambers);
