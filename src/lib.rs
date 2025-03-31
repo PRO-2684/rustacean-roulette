@@ -113,9 +113,10 @@ impl Roulette {
     ///
     /// - If the chamber is loaded with a bullet, return `Some(true)`
     /// - If the chamber is empty, return `Some(false)`
-    /// - If the chamber is out of bounds, return `None`
+    /// - If we have fired all filled chambers, return `None`
     pub fn fire(&mut self) -> Option<bool> {
-        if self.current_chamber >= self.chambers.len() {
+        if self.peek().0 == 0 {
+            // No filled chambers left
             return None;
         }
 
