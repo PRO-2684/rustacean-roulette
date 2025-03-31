@@ -19,8 +19,9 @@ impl Command for PeekCommand {
         let roulette = roulette.lock().await;
         let (filled, left) = roulette.peek();
         // Respond with the result
-        let response =
-            format!("There're {filled} filled chambers, out of {left} left-over chambers.",);
+        let response = format!(
+            "You stole a quick glimpse at the revolver... There're {filled} filled chambers, out of {left} left-over chambers."
+        );
         Some(response)
     }
 }

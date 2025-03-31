@@ -2,7 +2,7 @@ mod peek;
 mod roulette;
 
 use super::{Roulette, RouletteConfig};
-use frankenstein::{client_reqwest::Bot, types::Message};
+use frankenstein::{client_reqwest::Bot, types::{BotCommand, Message}};
 use peek::PeekCommand;
 use roulette::RouletteCommand;
 use tokio::sync::Mutex;
@@ -36,7 +36,7 @@ impl Commands {
     ///
     /// - `text` - The text to check.
     /// - `username` - The username of the bot.
-    pub fn parse_command(text: Option<&String>, username: &str) -> Option<Commands> {
+    pub fn parse(text: Option<&String>, username: &str) -> Option<Commands> {
         let Some(text) = text else {
             return None;
         };
@@ -80,5 +80,19 @@ impl Commands {
             Self::Peek => PeekCommand::execute(bot, msg, roulette, roulette_config).await,
             Self::Roulette => RouletteCommand::execute(bot, msg, roulette, roulette_config).await,
         }
+    }
+
+    /// List of commands.
+    pub fn list() -> Vec<BotCommand> {
+        vec![
+            BotCommand {
+                command: PeekCommand::TRIGGER.to_string(),
+                description: PeekCommand::HELP.to_string(),
+            },
+            BotCommand {
+                command: RouletteCommand::TRIGGER.to_string(),
+                description: RouletteCommand::HELP.to_string(),
+            },
+        ]
     }
 }

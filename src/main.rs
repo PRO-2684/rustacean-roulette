@@ -1,10 +1,6 @@
 use env_logger::Env;
 use frankenstein::{
-    AsyncTelegramApi, Error,
-    client_reqwest::Bot,
-    methods::{GetChatMemberParams, GetChatParams, GetUpdatesParams, SendMessageParams},
-    types::{ChatMember, ChatType, ReplyParameters},
-    updates::UpdateContent,
+    client_reqwest::Bot, methods::{GetChatMemberParams, GetChatParams, GetUpdatesParams, SendMessageParams, SetMyCommandsParams}, types::{ChatMember, ChatType, ReplyParameters}, updates::UpdateContent, AsyncTelegramApi, Error
 };
 use log::{debug, error, info};
 use rustacean_roulette::{Commands, Config, Roulette, RouletteConfig};
@@ -30,7 +26,12 @@ async fn main() -> Result<(), Error> {
         panic!("Failed to get bot username");
     };
 
-    // TODO: setMyDefaultAdministratorRights / setMyCommands
+    // Set bot commands
+    let set_param = SetMyCommandsParams::builder()
+        .commands(Commands::list())
+        .build();
+    bot.set_my_commands(&set_param).await?;
+    // TODO: setMyDefaultAdministratorRights
 
     let group_data = init_group_data(bot, me.id, &whitelist, &roulette_config).await;
     let group_data: &_ = Box::leak(Box::new(group_data));
@@ -61,7 +62,7 @@ async fn main() -> Result<(), Error> {
                     }
 
                     let text = msg.text.as_ref();
-                    let Some(command) = Commands::parse_command(text, &username) else {
+                    let Some(command) = Commands::parse(text, &username) else {
                         debug!("Not a command: {text:?}");
                         continue;
                     };
