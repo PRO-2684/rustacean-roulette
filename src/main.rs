@@ -136,19 +136,15 @@ async fn init_group_data(
         let group = match bot.get_chat(&get_chat_param).await {
             Ok(res) => res.result,
             Err(err) => {
-                error!("Failed to get chat info for group ID {group_id}: {err}");
+                error!("Failed to get chat info for group <{group_id}>: {err}");
                 continue;
             }
         };
         // Check chat type
-        if !matches!(group.type_field, ChatType::Group | ChatType::Supergroup) {
-            info!("Group ID: {group_id} is not a group or supergroup, ignoring");
+        if !matches!(group.type_field, ChatType::Supergroup) {
+            info!("Group <{group_id}> is not a supergroup, ignoring");
             continue;
         }
-        debug!(
-            "Group ID: {group_id}, Name: {}",
-            group.title.unwrap_or_else(|| "<unknown>".to_string())
-        );
         // Check permissions
         let get_chat_member_param = GetChatMemberParams::builder()
             .chat_id(*group_id)
@@ -157,7 +153,7 @@ async fn init_group_data(
         let member = match bot.get_chat_member(&get_chat_member_param).await {
             Ok(res) => res.result,
             Err(err) => {
-                error!("Failed to get chat member info for group ID {group_id}: {err}");
+                error!("Failed to get chat member info for group <{group_id}>: {err}");
                 continue;
             }
         };
@@ -167,7 +163,7 @@ async fn init_group_data(
             _ => false,
         };
         if !can_restrict {
-            info!("Bot cannot restrict members in group ID: {group_id}, ignoring");
+            info!("Bot cannot restrict members in group <{group_id}>, ignoring");
             continue;
         }
 
