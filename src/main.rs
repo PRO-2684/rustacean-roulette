@@ -1,9 +1,9 @@
 use env_logger::Env;
 use frankenstein::{
-    client_reqwest::Bot, methods::{GetChatMemberParams, GetChatParams, GetUpdatesParams, SendMessageParams, SetMyCommandsParams}, types::{ChatMember, ChatType, ReplyParameters}, updates::UpdateContent, AsyncTelegramApi, Error
+    client_reqwest::Bot, methods::{GetChatMemberParams, GetChatParams, GetUpdatesParams, SendMessageParams}, types::{ChatMember, ChatType, ReplyParameters}, updates::UpdateContent, AsyncTelegramApi, Error
 };
 use log::{debug, error, info};
-use rustacean_roulette::{Commands, Config, Roulette, RouletteConfig};
+use rustacean_roulette::{Commands, Config, Roulette, RouletteConfig, init_commands_and_rights};
 use std::{collections::HashMap, io::Write};
 use tokio::sync::Mutex;
 use toml::de;
@@ -27,11 +27,7 @@ async fn main() -> Result<(), Error> {
     };
 
     // Set bot commands
-    let set_param = SetMyCommandsParams::builder()
-        .commands(Commands::list())
-        .build();
-    bot.set_my_commands(&set_param).await?;
-    // TODO: setMyDefaultAdministratorRights
+    init_commands_and_rights(bot).await?;
 
     let group_data = init_group_data(bot, me.id, &whitelist, &roulette_config).await;
     let group_data: &_ = Box::leak(Box::new(group_data));

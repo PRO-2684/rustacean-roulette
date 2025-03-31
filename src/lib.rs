@@ -2,6 +2,7 @@ mod commands;
 mod defaults;
 
 pub use commands::Commands;
+use frankenstein::{client_reqwest::Bot, methods::{SetMyCommandsParams, SetMyDefaultAdministratorRightsParams}, types::ChatAdministratorRights, AsyncTelegramApi, Error};
 use rand::{Rng, seq::index::sample};
 use serde::Deserialize;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -139,6 +140,31 @@ impl Roulette {
         let left = self.chambers.len() - self.current_chamber;
         (filled, left)
     }
+}
+
+/// Set commands and default admin rights for the bot.
+pub async fn init_commands_and_rights(bot: &Bot) -> Result<(), Error> {
+    let commands_param = SetMyCommandsParams::builder()
+        .commands(Commands::list())
+        .build();
+    bot.set_my_commands(&commands_param).await?;
+
+    let rights = ChatAdministratorRights::builder()
+        .is_anonymous(false)
+        .can_manage_chat(false)
+        .can_delete_messages(false)
+        .can_manage_video_chats(false)
+        .can_restrict_members(true) // Required
+        .can_promote_members(false)
+        .can_change_info(false)
+        .can_invite_users(false)
+        .build();
+    let rights_param = SetMyDefaultAdministratorRightsParams::builder()
+        .rights(rights)
+        .build();
+    bot.set_my_default_administrator_rights(&rights_param).await?;
+
+    Ok(())
 }
 
 #[cfg(test)]
