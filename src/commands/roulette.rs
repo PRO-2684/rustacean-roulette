@@ -1,7 +1,12 @@
-use frankenstein::{methods::{GetChatMemberParams, RestrictChatMemberParams, SendMessageParams}, types::{ChatMember, ChatPermissions}, AsyncTelegramApi};
+use super::{Command, Roulette, RouletteConfig};
+use frankenstein::{
+    AsyncTelegramApi,
+    client_reqwest::Bot,
+    methods::{GetChatMemberParams, RestrictChatMemberParams, SendMessageParams},
+    types::{ChatMember, ChatPermissions, Message},
+};
 use log::{error, info};
-
-use super::Command;
+use tokio::sync::Mutex;
 
 /// Joins the roulette game.
 pub struct RouletteCommand;
@@ -10,10 +15,10 @@ impl Command for RouletteCommand {
     const TRIGGER: &'static str = "roulette";
     const HELP: &'static str = "Joins the roulette game.";
     async fn execute(
-        bot: &frankenstein::client_reqwest::Bot,
-        msg: frankenstein::types::Message,
-        roulette: &tokio::sync::Mutex<crate::Roulette>,
-        roulette_config: &crate::RouletteConfig,
+        bot: &Bot,
+        msg: Message,
+        roulette: &Mutex<Roulette>,
+        roulette_config: &RouletteConfig,
     ) -> Option<String> {
         const RESTRICTED_PERM: ChatPermissions = ChatPermissions {
             can_send_messages: Some(false),

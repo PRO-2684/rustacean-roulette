@@ -1,10 +1,10 @@
 mod commands;
 mod defaults;
 
+pub use commands::Commands;
 use rand::{Rng, seq::index::sample};
 use serde::Deserialize;
 use std::time::{SystemTime, UNIX_EPOCH};
-pub use commands::Commands;
 
 /// Configuration for the bot.
 #[derive(Deserialize)]

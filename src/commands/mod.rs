@@ -1,8 +1,10 @@
+mod peek;
 mod roulette;
 
 use super::{Roulette, RouletteConfig};
 use frankenstein::{client_reqwest::Bot, types::Message};
-pub use roulette::RouletteCommand;
+use peek::PeekCommand;
+use roulette::RouletteCommand;
 use tokio::sync::Mutex;
 
 /// A command.
@@ -23,6 +25,7 @@ pub trait Command {
 /// List of commands. Cheap to clone.
 #[non_exhaustive]
 pub enum Commands {
+    Peek,
     Roulette,
 }
 
@@ -59,6 +62,7 @@ impl Commands {
 
         // Match the command
         match command {
+            PeekCommand::TRIGGER => Some(Commands::Peek),
             RouletteCommand::TRIGGER => Some(Commands::Roulette),
             _ => None,
         }
@@ -73,10 +77,8 @@ impl Commands {
         roulette_config: &RouletteConfig,
     ) -> Option<String> {
         match self {
-            Self::Roulette => {
-                RouletteCommand::execute(bot, msg, roulette, roulette_config).await
-            }
-            _ => None,
+            Self::Peek => PeekCommand::execute(bot, msg, roulette, roulette_config).await,
+            Self::Roulette => RouletteCommand::execute(bot, msg, roulette, roulette_config).await,
         }
     }
 }
