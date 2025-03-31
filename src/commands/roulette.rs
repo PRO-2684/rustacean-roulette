@@ -75,7 +75,7 @@ impl Command for RouletteCommand {
                 let send_message_param = SendMessageParams::builder()
                     .chat_id(chat.id)
                     .text(format!(
-                        "The gun has been reloaded, with {bullets} bullets in {chambers} chambers."
+                        "The revolver has been reloaded, with {bullets} bullets in {chambers} chambers."
                     ))
                     .build();
                 if let Err(err) = bot.send_message(&send_message_param).await {
@@ -96,7 +96,7 @@ impl Command for RouletteCommand {
         let name = name.unwrap_or(&sender.first_name);
         if result {
             // Restrict the user for a certain period
-            let until = roulette_config.random_mute_until();
+            let (duration, until) = roulette_config.random_mute_until();
             let restrict_param = RestrictChatMemberParams::builder()
                 .chat_id(chat.id)
                 .user_id(sender.id)
@@ -105,16 +105,19 @@ impl Command for RouletteCommand {
                 .build();
             match bot.restrict_chat_member(&restrict_param).await {
                 Ok(_) => {
-                    info!("Restricted user {} in group ID {}", name, chat.id);
+                    info!(
+                        "Restricted user {name} for {duration}s in group <{}>",
+                        chat.id
+                    );
                 }
                 Err(err) => {
-                    error!("Failed to restrict user {}: {err}", name);
+                    error!("Failed to restrict user {name}: {err}");
                     return None;
                 }
             };
-            Some(format!("{name} is shot."))
+            Some(format!("Bang! {name} was shot and muted for {duration}s.",))
         } else {
-            Some(format!("{name} is safe and sound."))
+            Some(format!("Click! {name} is safe and sound.",))
         }
     }
 }

@@ -86,17 +86,17 @@ impl RouletteConfig {
         (self.bullets, self.chambers)
     }
 
-    /// Generate a random time to mute the user until.
-    pub fn random_mute_until(&self) -> u64 {
+    /// Generate a random mute time and the time until which the user will be muted.
+    pub fn random_mute_until(&self) -> (u64, u64) {
         // Generate a random mute time between min and max
         let mut rng = rand::rng();
-        let mute_time = rng.random_range(self.min_mute_time..=self.max_mute_time);
+        let duration: u64 = rng.random_range(self.min_mute_time..=self.max_mute_time).into();
         // Convert to seconds and add to current time
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards")
             .as_secs();
-        now + mute_time as u64
+        (duration, now + duration)
     }
 }
 
