@@ -21,10 +21,10 @@ async fn main() -> Result<(), Error> {
         whitelist,
         game: roulette_config,
     } = read_config();
-    let roulette_config = Box::leak(Box::new(roulette_config)).downgrade();
+    let roulette_config: &_ = Box::leak(Box::new(roulette_config));
 
     // Create a new Telegram Bot
-    let bot = Box::leak(Box::new(Bot::new(&token))).downgrade();
+    let bot: &_ = Box::leak(Box::new(Bot::new(&token)));
     let me = bot.get_me().await?.result;
     let Some(username) = me.username else {
         panic!("Failed to get bot username");
@@ -32,10 +32,9 @@ async fn main() -> Result<(), Error> {
 
     // TODO: setMyDefaultAdministratorRights / setMyCommands
 
-    let group_data = init_group_data(bot, me.id, &whitelist, &roulette_config)
-        .await
-        .downgrade();
-    info!("Bot started, username: {username}");
+    let group_data = init_group_data(bot, me.id, &whitelist, &roulette_config).await;
+    let group_data: &_ = Box::leak(Box::new(group_data));
+    info!("Bot started: @{username}");
 
     // Handle incoming messages
     let mut update_params = GetUpdatesParams::builder().build();
@@ -93,6 +92,7 @@ async fn main() -> Result<(), Error> {
     }
 }
 
+/// Setup the logger.
 fn setup_logger() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info"))
         .format(|buf, record| {
@@ -103,17 +103,7 @@ fn setup_logger() {
         .init();
 }
 
-/// Downgrade a mutable reference to an immutable one.
-trait Downgrade {
-    fn downgrade(self: &mut Self) -> &Self;
-}
-
-impl<T> Downgrade for T {
-    fn downgrade(self: &mut Self) -> &Self {
-        self
-    }
-}
-
+/// Read the config file and parse it into a `Config` struct.
 fn read_config() -> Config {
     // Read path to the config file as the first argument, default to "config.toml"
     let config_path = std::env::args()
@@ -131,14 +121,15 @@ fn read_config() -> Config {
     config
 }
 
+/// Initialize group data for the bot.
 async fn init_group_data(
     bot: &Bot,
     user_id: u64,
     whitelist: &[i64],
     game: &RouletteConfig,
-) -> &'static mut HashMap<i64, Mutex<Roulette>> {
+) -> HashMap<i64, Mutex<Roulette>> {
     // Group-wise data (mapping group ID to Roulette instance)
-    let group_data = Box::leak(Box::new(HashMap::new()));
+    let mut group_data = HashMap::new();
     for group_id in whitelist {
         // Acquire chat info
         let get_chat_param = GetChatParams::builder().chat_id(*group_id).build();
