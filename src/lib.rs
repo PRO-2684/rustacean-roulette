@@ -1,8 +1,10 @@
+mod commands;
+mod defaults;
+
 use rand::{Rng, seq::index::sample};
 use serde::Deserialize;
 use std::time::{SystemTime, UNIX_EPOCH};
-
-mod defaults;
+pub use commands::Commands;
 
 /// Configuration for the bot.
 #[derive(Deserialize)]
@@ -84,7 +86,7 @@ impl RouletteConfig {
         (self.bullets, self.chambers)
     }
 
-    /// Generate a
+    /// Generate a random time to mute the user until.
     pub fn random_mute_until(&self) -> u64 {
         // Generate a random mute time between min and max
         let mut rng = rand::rng();
@@ -122,40 +124,13 @@ impl Roulette {
 
         Some(result)
     }
-}
 
-/// Check if the given text is a command to participate in Russian Roulette.
-///
-/// # Arguments
-///
-/// - `text` - The text to check.
-/// - `username` - The username of the bot.
-pub fn is_roulette(text: Option<&String>, username: &str) -> bool {
-    let Some(text) = text else {
-        return false;
-    };
-    let text = text.trim();
-    let (command, _arg) = text.split_once(' ').unwrap_or((text, ""));
-
-    // Two possible command formats:
-    // 1. /command <arg>
-    // 2. /command@bot_username <arg>
-
-    // Trim the leading slash
-    let slash = command.starts_with('/');
-    if !slash {
-        return false;
+    /// Peek the left-over chambers, returning count of filled and left chambers.
+    pub fn peek(&self) -> (usize, usize) {
+        let filled = self.chambers.iter().filter(|&&x| x).count();
+        let left = self.chambers.len() - self.current_chamber;
+        (filled, left)
     }
-    let command = &command[1..];
-
-    // Split out the mention and check if it's the bot
-    let (command, mention) = command.split_once('@').unwrap_or((command, ""));
-    if !mention.is_empty() && mention != username {
-        return false;
-    }
-
-    // Check if the command is "roulette", "russian_roulette", or "rr"
-    command == "roulette" || command == "russian_roulette" || command == "rr"
 }
 
 #[cfg(test)]
