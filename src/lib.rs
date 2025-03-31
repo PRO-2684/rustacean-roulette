@@ -90,7 +90,9 @@ impl RouletteConfig {
     pub fn random_mute_until(&self) -> (u64, u64) {
         // Generate a random mute time between min and max
         let mut rng = rand::rng();
-        let duration: u64 = rng.random_range(self.min_mute_time..=self.max_mute_time).into();
+        let duration: u64 = rng
+            .random_range(self.min_mute_time..=self.max_mute_time)
+            .into();
         // Convert to seconds and add to current time
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -128,7 +130,12 @@ impl Roulette {
 
     /// Peek the left-over chambers, returning count of filled and left chambers.
     pub fn peek(&self) -> (usize, usize) {
-        let filled = self.chambers.iter().filter(|&&x| x).count();
+        let filled = self
+            .chambers
+            .iter()
+            .skip(self.current_chamber)
+            .filter(|&&x| x)
+            .count();
         let left = self.chambers.len() - self.current_chamber;
         (filled, left)
     }
