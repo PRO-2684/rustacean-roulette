@@ -10,7 +10,7 @@ use frankenstein::{
     updates::UpdateContent,
 };
 use log::{debug, error, info};
-use russian_roulette::{Config, Roulette, RouletteConfig, is_roulette};
+use rustacean_roulette::{Config, Roulette, RouletteConfig, is_roulette};
 use std::{collections::HashMap, io::Write};
 use tokio::sync::Mutex;
 use toml::de;

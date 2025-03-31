@@ -1,4 +1,4 @@
-# `russian-roulette`
+# `rustacean-roulette`
 
 ## Configuration
 
