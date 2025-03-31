@@ -69,26 +69,22 @@ impl Command for RouletteCommand {
         let result = match roulette.fire() {
             Some(result) => result,
             None => {
+                // This should never happen, but just in case
+                error!("Failed to fire the roulette: {roulette:?}, {roulette_config:?}");
                 // Reload the gun
                 *roulette = roulette_config.start();
                 let (bullets, chambers) = roulette_config.info();
-                let send_message_param = SendMessageParams::builder()
-                    .chat_id(chat.id)
-                    .text(format!(
-                        "The revolver has been reloaded, with {bullets} bullets in {chambers} chambers."
-                    ))
-                    .build();
-                if let Err(err) = bot.send_message(&send_message_param).await {
-                    error!("Failed to send message: {err}");
-                }
-
-                // Fire the roulette again
-                let Some(result) = roulette.fire() else {
-                    error!("Failed to fire roulette!");
-                    return Some("You're lucky that the gun got jammed.".to_string());
-                };
-                result
+                return Some(format!("You're lucky that the gun got jammed. The gun has been reloaded, with {bullets} bullets in {chambers} chambers."));
             }
+        };
+
+        // Reload the gun if empty
+        let reload_tip = if roulette.peek().0 == 0 {
+            *roulette = roulette_config.start();
+            let (bullets, chambers) = roulette_config.info();
+            format!(" The gun has been reloaded, with {bullets} bullets in {chambers} chambers.")
+        } else {
+            String::new()
         };
 
         // Apply action and return the message
@@ -115,9 +111,9 @@ impl Command for RouletteCommand {
                     return None;
                 }
             };
-            Some(format!("Bang! {name} was shot and muted for {duration}s.",))
+            Some(format!("Bang! {name} was shot and muted for {duration}s.",) + &reload_tip)
         } else {
-            Some(format!("Click! {name} is safe and sound.",))
+            Some(format!("Click! {name} is safe and sound.",) + &reload_tip)
         }
     }
 }

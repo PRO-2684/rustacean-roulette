@@ -21,7 +21,7 @@ pub struct Config {
 }
 
 /// Configuration of the Russian Roulette game.
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct RouletteConfig {
     /// Number of chambers in the revolver.
     #[serde(default = "defaults::chambers")]
@@ -104,6 +104,7 @@ impl RouletteConfig {
 }
 
 /// An on-going game of Russian Roulette.
+#[derive(Debug)]
 pub struct Roulette {
     /// An array of boolean values representing the contents of the chambers. `true` means the chamber is loaded with a bullet, `false` means it is empty.
     chambers: Vec<bool>,
