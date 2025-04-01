@@ -14,11 +14,7 @@ pub struct RouletteCommand;
 impl Command for RouletteCommand {
     const TRIGGER: &'static str = "roulette";
     const HELP: &'static str = "Joins the roulette game.";
-    async fn execute(
-        bot: &Bot,
-        msg: Message,
-        roulette: &Mutex<Roulette>,
-    ) -> Option<String> {
+    async fn execute(bot: &Bot, msg: Message, roulette: &Mutex<Roulette>) -> Option<String> {
         const RESTRICTED_PERM: ChatPermissions = ChatPermissions {
             can_send_messages: Some(false),
             can_send_audios: Some(false),
@@ -73,7 +69,9 @@ impl Command for RouletteCommand {
                 // Reload the gun
                 roulette.restart();
                 let (bullets, chambers) = roulette.info();
-                return Some(format!("You're lucky that the gun got jammed. The gun has been reloaded, with {bullets} bullets in {chambers} chambers."));
+                return Some(format!(
+                    "You're lucky that the gun got jammed. The gun has been reloaded, with {bullets} bullets in {chambers} chambers."
+                ));
             }
         };
 

@@ -2,7 +2,10 @@ mod peek;
 mod roulette;
 
 use super::Roulette;
-use frankenstein::{client_reqwest::Bot, types::{BotCommand, Message}};
+use frankenstein::{
+    client_reqwest::Bot,
+    types::{BotCommand, Message},
+};
 use peek::PeekCommand;
 use roulette::RouletteCommand;
 use tokio::sync::Mutex;
@@ -14,11 +17,7 @@ pub trait Command {
     /// Help message.
     const HELP: &'static str;
     /// Execute the command.
-    async fn execute(
-        bot: &Bot,
-        msg: Message,
-        roulette: &Mutex<Roulette>,
-    ) -> Option<String>;
+    async fn execute(bot: &Bot, msg: Message, roulette: &Mutex<Roulette>) -> Option<String>;
 }
 
 /// List of commands. Cheap to clone.

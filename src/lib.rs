@@ -2,7 +2,12 @@ mod commands;
 mod defaults;
 
 pub use commands::Commands;
-use frankenstein::{client_reqwest::Bot, methods::{SetMyCommandsParams, SetMyDefaultAdministratorRightsParams}, types::ChatAdministratorRights, AsyncTelegramApi, Error};
+use frankenstein::{
+    AsyncTelegramApi, Error,
+    client_reqwest::Bot,
+    methods::{SetMyCommandsParams, SetMyDefaultAdministratorRightsParams},
+    types::ChatAdministratorRights,
+};
 use rand::{Rng, seq::index::sample};
 use serde::Deserialize;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -204,7 +209,8 @@ pub async fn init_commands_and_rights(bot: &Bot) -> Result<(), Error> {
     let rights_param = SetMyDefaultAdministratorRightsParams::builder()
         .rights(rights)
         .build();
-    bot.set_my_default_administrator_rights(&rights_param).await?;
+    bot.set_my_default_administrator_rights(&rights_param)
+        .await?;
 
     Ok(())
 }

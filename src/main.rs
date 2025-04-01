@@ -1,9 +1,13 @@
 use env_logger::Env;
 use frankenstein::{
-    client_reqwest::Bot, methods::{GetChatMemberParams, GetChatParams, GetUpdatesParams, SendMessageParams}, types::{ChatMember, ChatType, ReplyParameters}, updates::UpdateContent, AsyncTelegramApi, Error
+    AsyncTelegramApi, Error,
+    client_reqwest::Bot,
+    methods::{GetChatMemberParams, GetChatParams, GetUpdatesParams, SendMessageParams},
+    types::{ChatMember, ChatType, ReplyParameters},
+    updates::UpdateContent,
 };
 use log::{debug, error, info};
-use rustacean_roulette::{init_commands_and_rights, Commands, Config, GroupConfig, Roulette};
+use rustacean_roulette::{Commands, Config, GroupConfig, Roulette, init_commands_and_rights};
 use std::{collections::HashMap, io::Write};
 use tokio::sync::Mutex;
 use toml::de;
@@ -15,7 +19,7 @@ async fn main() -> Result<(), Error> {
     let Config {
         token,
         game: default_config,
-        groups
+        groups,
     } = read_config();
 
     // Create a new Telegram Bot

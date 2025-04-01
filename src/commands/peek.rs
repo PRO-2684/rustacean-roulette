@@ -9,11 +9,7 @@ impl Command for PeekCommand {
     const TRIGGER: &'static str = "peek";
     const HELP: &'static str =
         "Peek the left-over chambers, acquiring count of filled and left chambers.";
-    async fn execute(
-        _bot: &Bot,
-        _msg: Message,
-        roulette: &Mutex<Roulette>,
-    ) -> Option<String> {
+    async fn execute(_bot: &Bot, _msg: Message, roulette: &Mutex<Roulette>) -> Option<String> {
         // Peek the roulette
         let roulette = roulette.lock().await;
         let (filled, left) = roulette.peek();
