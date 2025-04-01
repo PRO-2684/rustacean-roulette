@@ -12,9 +12,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub struct Config {
     /// The token for the bot.
     pub token: String,
-    /// List of whitelisted groups.
-    #[serde(default)]
-    pub whitelist: Vec<i64>,
     /// The configuration for the Russian Roulette game.
     #[serde(default)]
     pub game: Roulette,

@@ -3,7 +3,7 @@ use frankenstein::{
     client_reqwest::Bot, methods::{GetChatMemberParams, GetChatParams, GetUpdatesParams, SendMessageParams}, types::{ChatMember, ChatType, ReplyParameters}, updates::UpdateContent, AsyncTelegramApi, Error
 };
 use log::{debug, error, info};
-use rustacean_roulette::{Commands, Config, Roulette, init_commands_and_rights};
+use rustacean_roulette::{init_commands_and_rights, Commands, Config, GroupConfig, Roulette};
 use std::{collections::HashMap, io::Write};
 use tokio::sync::Mutex;
 use toml::de;
@@ -14,7 +14,6 @@ async fn main() -> Result<(), Error> {
 
     let Config {
         token,
-        whitelist,
         game: default_config,
         groups
     } = read_config();
@@ -29,7 +28,7 @@ async fn main() -> Result<(), Error> {
     // Set bot commands
     init_commands_and_rights(bot).await?;
 
-    let group_data = init_group_data(bot, me.id, &whitelist, default_config).await;
+    let group_data = init_group_data(bot, me.id, default_config, groups).await;
     let group_data: &_ = Box::leak(Box::new(group_data));
     info!("Bot started: @{username}");
 
@@ -50,9 +49,7 @@ async fn main() -> Result<(), Error> {
                         continue;
                     };
                     // Whitelist check
-                    if whitelist.contains(&msg.chat.id) {
-                        debug!("Received message from whitelisted chat: {msg:?}");
-                    } else {
+                    if group_data.get(&msg.chat.id).is_none() {
                         debug!("Received message from non-whitelisted chat: {msg:?}");
                         continue;
                     }
@@ -122,14 +119,15 @@ fn read_config() -> Config {
 async fn init_group_data(
     bot: &Bot,
     user_id: u64,
-    whitelist: &[i64],
     default_config: Roulette,
+    groups: Vec<GroupConfig>,
 ) -> HashMap<i64, Mutex<Roulette>> {
     // Group-wise data (mapping group ID to Roulette instance)
     let mut group_data = HashMap::new();
-    for group_id in whitelist {
+    for group_config in groups {
+        let group_id = group_config.id;
         // Acquire chat info
-        let get_chat_param = GetChatParams::builder().chat_id(*group_id).build();
+        let get_chat_param = GetChatParams::builder().chat_id(group_id).build();
         let group = match bot.get_chat(&get_chat_param).await {
             Ok(res) => res.result,
             Err(err) => {
@@ -144,7 +142,7 @@ async fn init_group_data(
         }
         // Check permissions
         let get_chat_member_param = GetChatMemberParams::builder()
-            .chat_id(*group_id)
+            .chat_id(group_id)
             .user_id(user_id)
             .build();
         let member = match bot.get_chat_member(&get_chat_member_param).await {
@@ -164,9 +162,10 @@ async fn init_group_data(
             continue;
         }
 
-        let mut game = default_config.clone();
+        // Start a new game for each group
+        let mut game = group_config.resolve(&default_config);
         game.restart();
-        group_data.insert(*group_id, Mutex::new(game.clone()));
+        group_data.insert(group_id, Mutex::new(game));
     }
 
     group_data
