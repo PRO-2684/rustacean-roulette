@@ -16,13 +16,16 @@ pub struct Config {
     #[serde(default)]
     pub whitelist: Vec<i64>,
     /// The configuration for the Russian Roulette game.
-    #[serde(default = "defaults::default_config")]
-    pub game: RouletteConfig,
+    #[serde(default)]
+    pub game: Roulette,
+    /// The override configuration for groups.
+    #[serde(default)]
+    pub groups: Vec<GroupConfig>,
 }
 
-/// Configuration of the Russian Roulette game.
-#[derive(Debug, Deserialize)]
-pub struct RouletteConfig {
+/// A Russian Roulette game.
+#[derive(Clone, Debug, Deserialize)]
+pub struct Roulette {
     /// Number of chambers in the revolver.
     #[serde(default = "defaults::chambers")]
     chambers: usize,
@@ -35,11 +38,17 @@ pub struct RouletteConfig {
     /// Maximum time to mute in seconds.
     #[serde(default = "defaults::max_mute_time")]
     max_mute_time: u32,
+    /// An array of boolean values representing the contents of the chambers. `true` means the chamber is loaded with a bullet, `false` means it is empty.
+    #[serde(skip)]
+    contents: Vec<bool>,
+    /// The current chamber index.
+    #[serde(skip)]
+    position: usize,
 }
 
-impl RouletteConfig {
-    /// Start a new game of Russian Roulette with the given configuration.
-    pub fn start(&self) -> Roulette {
+impl Roulette {
+    /// (Re-)Start a new game of Russian Roulette.
+    pub fn restart(&mut self) {
         // Sanity check
         assert!(
             self.chambers > 0,
@@ -63,22 +72,14 @@ impl RouletteConfig {
             "Minimum mute time must be less than or equal to maximum mute time"
         );
 
-        // Initialize the chambers with `false` (empty).
-        let mut chambers = Vec::with_capacity(self.chambers);
-        for _ in 0..self.chambers {
-            chambers.push(false);
-        }
+        self.position = 0;
+        self.contents.resize(self.chambers, false);
 
         // Randomly choose `bullets` chambers to be loaded with bullets.
         let mut rng = rand::rng();
         let selected = sample(&mut rng, self.chambers, self.bullets);
         for i in selected {
-            chambers[i] = true;
-        }
-
-        Roulette {
-            chambers,
-            current_chamber: 0,
+            self.contents[i] = true;
         }
     }
 
@@ -101,18 +102,7 @@ impl RouletteConfig {
             .as_secs();
         (duration, now + duration)
     }
-}
 
-/// An on-going game of Russian Roulette.
-#[derive(Debug)]
-pub struct Roulette {
-    /// An array of boolean values representing the contents of the chambers. `true` means the chamber is loaded with a bullet, `false` means it is empty.
-    chambers: Vec<bool>,
-    /// The current chamber index.
-    current_chamber: usize,
-}
-
-impl Roulette {
     /// Try to fire the current chamber.
     ///
     /// - If the chamber is loaded with a bullet, return `Some(true)`
@@ -124,8 +114,8 @@ impl Roulette {
             return None;
         }
 
-        let result = self.chambers[self.current_chamber];
-        self.current_chamber += 1;
+        let result = self.contents[self.position];
+        self.position += 1;
 
         Some(result)
     }
@@ -133,13 +123,67 @@ impl Roulette {
     /// Peek the left-over chambers, returning count of filled and left chambers.
     pub fn peek(&self) -> (usize, usize) {
         let filled = self
-            .chambers
+            .contents
             .iter()
-            .skip(self.current_chamber)
+            .skip(self.position)
             .filter(|&&x| x)
             .count();
-        let left = self.chambers.len() - self.current_chamber;
+        let left = self.contents.len() - self.position;
         (filled, left)
+    }
+}
+
+impl Default for Roulette {
+    fn default() -> Self {
+        Roulette {
+            chambers: defaults::chambers(),
+            bullets: defaults::bullets(),
+            min_mute_time: defaults::min_mute_time(),
+            max_mute_time: defaults::max_mute_time(),
+            contents: vec![],
+            position: 0,
+        }
+    }
+}
+
+/// Configuration for a group.
+#[derive(Debug, Deserialize)]
+pub struct GroupConfig {
+    /// The ID of the group.
+    pub id: i64,
+    /// Override number of chambers in the revolver.
+    chambers: Option<usize>,
+    /// Override number of bullets in the revolver.
+    bullets: Option<usize>,
+    /// Override minimum time to mute in seconds.
+    min_mute_time: Option<u32>,
+    /// Override maximum time to mute in seconds.
+    max_mute_time: Option<u32>,
+}
+
+impl GroupConfig {
+    /// Resolves to a [`RouletteConfig`].
+    pub fn resolve(&self, default: &Roulette) -> Roulette {
+        let Self {
+            chambers,
+            bullets,
+            min_mute_time,
+            max_mute_time,
+            ..
+        } = self;
+        let (chambers, bullets, min_mute_time, max_mute_time) = (
+            chambers.unwrap_or(default.chambers),
+            bullets.unwrap_or(default.bullets),
+            min_mute_time.unwrap_or(default.min_mute_time),
+            max_mute_time.unwrap_or(default.max_mute_time),
+        );
+        Roulette {
+            chambers,
+            bullets,
+            min_mute_time,
+            max_mute_time,
+            ..Default::default()
+        }
     }
 }
 
@@ -175,8 +219,11 @@ mod tests {
     #[test]
     fn test_fire() {
         let mut roulette = Roulette {
-            chambers: vec![false, true, false],
-            current_chamber: 0,
+            contents: vec![false, true, false],
+            position: 0,
+            chambers: 3,
+            bullets: 1,
+            ..Default::default()
         };
 
         assert_eq!(roulette.fire(), Some(false));
@@ -187,16 +234,11 @@ mod tests {
 
     #[test]
     fn test_start() {
-        let config = RouletteConfig {
-            chambers: 6,
-            bullets: 2,
-            min_mute_time: 5,
-            max_mute_time: 10,
-        };
+        let mut roulette = Roulette::default();
 
-        let roulette = config.start();
-        assert_eq!(roulette.chambers.len(), 6);
-        assert_eq!(roulette.chambers.iter().filter(|&&x| x).count(), 2);
-        assert_eq!(roulette.current_chamber, 0);
+        roulette.restart();
+        assert_eq!(roulette.contents.len(), 6);
+        assert_eq!(roulette.contents.iter().filter(|&&x| x).count(), 2);
+        assert_eq!(roulette.position, 0);
     }
 }

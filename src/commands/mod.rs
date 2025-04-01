@@ -1,7 +1,7 @@
 mod peek;
 mod roulette;
 
-use super::{Roulette, RouletteConfig};
+use super::Roulette;
 use frankenstein::{client_reqwest::Bot, types::{BotCommand, Message}};
 use peek::PeekCommand;
 use roulette::RouletteCommand;
@@ -18,7 +18,6 @@ pub trait Command {
         bot: &Bot,
         msg: Message,
         roulette: &Mutex<Roulette>,
-        roulette_config: &RouletteConfig,
     ) -> Option<String>;
 }
 
@@ -74,11 +73,10 @@ impl Commands {
         bot: &Bot,
         msg: Message,
         roulette: &Mutex<Roulette>,
-        roulette_config: &RouletteConfig,
     ) -> Option<String> {
         match self {
-            Self::Peek => PeekCommand::execute(bot, msg, roulette, roulette_config).await,
-            Self::Roulette => RouletteCommand::execute(bot, msg, roulette, roulette_config).await,
+            Self::Peek => PeekCommand::execute(bot, msg, roulette).await,
+            Self::Roulette => RouletteCommand::execute(bot, msg, roulette).await,
         }
     }
 

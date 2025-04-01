@@ -1,17 +1,5 @@
 //! Default values for the game.
 
-use super::RouletteConfig;
-
-/// Default configuration for the Russian Roulette game.
-pub fn default_config() -> RouletteConfig {
-    RouletteConfig {
-        chambers: chambers(),
-        bullets: bullets(),
-        min_mute_time: min_mute_time(),
-        max_mute_time: max_mute_time(),
-    }
-}
-
 /// Default number of chambers in the revolver.
 pub fn chambers() -> usize {
     6

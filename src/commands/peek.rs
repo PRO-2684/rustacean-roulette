@@ -1,4 +1,4 @@
-use super::{Command, Roulette, RouletteConfig};
+use super::{Command, Roulette};
 use frankenstein::{client_reqwest::Bot, types::Message};
 use tokio::sync::Mutex;
 
@@ -13,7 +13,6 @@ impl Command for PeekCommand {
         _bot: &Bot,
         _msg: Message,
         roulette: &Mutex<Roulette>,
-        _roulette_config: &RouletteConfig,
     ) -> Option<String> {
         // Peek the roulette
         let roulette = roulette.lock().await;

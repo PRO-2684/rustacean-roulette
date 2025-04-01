@@ -1,8 +1,8 @@
-use super::{Command, Roulette, RouletteConfig};
+use super::{Command, Roulette};
 use frankenstein::{
     AsyncTelegramApi,
     client_reqwest::Bot,
-    methods::{GetChatMemberParams, RestrictChatMemberParams, SendMessageParams},
+    methods::{GetChatMemberParams, RestrictChatMemberParams},
     types::{ChatMember, ChatPermissions, Message},
 };
 use log::{error, info};
@@ -18,7 +18,6 @@ impl Command for RouletteCommand {
         bot: &Bot,
         msg: Message,
         roulette: &Mutex<Roulette>,
-        roulette_config: &RouletteConfig,
     ) -> Option<String> {
         const RESTRICTED_PERM: ChatPermissions = ChatPermissions {
             can_send_messages: Some(false),
@@ -70,18 +69,18 @@ impl Command for RouletteCommand {
             Some(result) => result,
             None => {
                 // This should never happen, but just in case
-                error!("Failed to fire the roulette: {roulette:?}, {roulette_config:?}");
+                error!("Failed to fire the roulette: {roulette:?}");
                 // Reload the gun
-                *roulette = roulette_config.start();
-                let (bullets, chambers) = roulette_config.info();
+                roulette.restart();
+                let (bullets, chambers) = roulette.info();
                 return Some(format!("You're lucky that the gun got jammed. The gun has been reloaded, with {bullets} bullets in {chambers} chambers."));
             }
         };
 
         // Reload the gun if empty
         let reload_tip = if roulette.peek().0 == 0 {
-            *roulette = roulette_config.start();
-            let (bullets, chambers) = roulette_config.info();
+            roulette.restart();
+            let (bullets, chambers) = roulette.info();
             format!(" The gun has been reloaded, with {bullets} bullets in {chambers} chambers.")
         } else {
             String::new()
@@ -92,7 +91,7 @@ impl Command for RouletteCommand {
         let name = name.unwrap_or(&sender.first_name);
         if result {
             // Restrict the user for a certain period
-            let (duration, until) = roulette_config.random_mute_until();
+            let (duration, until) = roulette.random_mute_until();
             let restrict_param = RestrictChatMemberParams::builder()
                 .chat_id(chat.id)
                 .user_id(sender.id)

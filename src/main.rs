@@ -3,7 +3,7 @@ use frankenstein::{
     client_reqwest::Bot, methods::{GetChatMemberParams, GetChatParams, GetUpdatesParams, SendMessageParams}, types::{ChatMember, ChatType, ReplyParameters}, updates::UpdateContent, AsyncTelegramApi, Error
 };
 use log::{debug, error, info};
-use rustacean_roulette::{Commands, Config, Roulette, RouletteConfig, init_commands_and_rights};
+use rustacean_roulette::{Commands, Config, Roulette, init_commands_and_rights};
 use std::{collections::HashMap, io::Write};
 use tokio::sync::Mutex;
 use toml::de;
@@ -15,9 +15,9 @@ async fn main() -> Result<(), Error> {
     let Config {
         token,
         whitelist,
-        game: roulette_config,
+        game: default_config,
+        groups
     } = read_config();
-    let roulette_config: &_ = Box::leak(Box::new(roulette_config));
 
     // Create a new Telegram Bot
     let bot: &_ = Box::leak(Box::new(Bot::new(&token)));
@@ -29,7 +29,7 @@ async fn main() -> Result<(), Error> {
     // Set bot commands
     init_commands_and_rights(bot).await?;
 
-    let group_data = init_group_data(bot, me.id, &whitelist, &roulette_config).await;
+    let group_data = init_group_data(bot, me.id, &whitelist, default_config).await;
     let group_data: &_ = Box::leak(Box::new(group_data));
     info!("Bot started: @{username}");
 
@@ -66,7 +66,7 @@ async fn main() -> Result<(), Error> {
                         let chat_id = msg.chat.id;
                         let message_id = msg.message_id;
                         let roulette = group_data.get(&chat_id).unwrap();
-                        let reply = command.execute(bot, msg, roulette, roulette_config).await;
+                        let reply = command.execute(bot, msg, roulette).await;
                         let Some(reply) = reply else {
                             return;
                         };
@@ -123,7 +123,7 @@ async fn init_group_data(
     bot: &Bot,
     user_id: u64,
     whitelist: &[i64],
-    game: &RouletteConfig,
+    default_config: Roulette,
 ) -> HashMap<i64, Mutex<Roulette>> {
     // Group-wise data (mapping group ID to Roulette instance)
     let mut group_data = HashMap::new();
@@ -164,8 +164,9 @@ async fn init_group_data(
             continue;
         }
 
-        let roulette = game.start();
-        group_data.insert(*group_id, Mutex::new(roulette));
+        let mut game = default_config.clone();
+        game.restart();
+        group_data.insert(*group_id, Mutex::new(game.clone()));
     }
 
     group_data
