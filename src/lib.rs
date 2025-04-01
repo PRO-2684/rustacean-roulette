@@ -231,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn test_start() {
+    fn test_restart() {
         let mut roulette = Roulette::default();
 
         roulette.restart();
