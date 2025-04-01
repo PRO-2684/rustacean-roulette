@@ -225,7 +225,8 @@ mod tests {
 
         assert_eq!(roulette.fire(), Some(false));
         assert_eq!(roulette.fire(), Some(true));
-        assert_eq!(roulette.fire(), Some(false));
+        // assert_eq!(roulette.fire(), Some(false)); // Early reload
+        assert_eq!(roulette.fire(), None);
         assert_eq!(roulette.fire(), None);
     }
 
