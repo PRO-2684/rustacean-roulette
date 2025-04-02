@@ -3,9 +3,7 @@ mod constants;
 
 pub use commands::Commands;
 use frankenstein::{
-    AsyncTelegramApi, Error,
-    client_reqwest::Bot,
-    methods::{SetMyCommandsParams, SetMyDefaultAdministratorRightsParams},
+    client_reqwest::Bot, methods::{DeleteMyCommandsParams, SetMyCommandsParams, SetMyDefaultAdministratorRightsParams}, types::BotCommandScope, AsyncTelegramApi, Error
 };
 use rand::{Rng, seq::index::sample};
 use serde::Deserialize;
@@ -216,8 +214,12 @@ impl GroupConfig {
 
 /// Set commands and default admin rights for the bot.
 pub async fn init_commands_and_rights(bot: &Bot) -> Result<(), Error> {
+    let delete_param = DeleteMyCommandsParams::builder().build();
+    bot.delete_my_commands(&delete_param).await?;
+
     let commands_param = SetMyCommandsParams::builder()
         .commands(Commands::list())
+        .scope(BotCommandScope::AllGroupChats)
         .build();
     bot.set_my_commands(&commands_param).await?;
 
