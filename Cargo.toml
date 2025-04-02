@@ -1,6 +1,6 @@
 [package]
 name = "rustacean-roulette"
-version = "0.1.0"
+version = "0.1.1"
 readme = "README.md"
 description = "A simple Russian Roulette Telegram bot implemented in Rust."
 keywords = ["russian-roulette", "telegram-bot", "game", "games", "cli"]
@@ -19,3 +19,17 @@ rand = "0.9.0"
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.44.1", features = ["rt-multi-thread", "macros"] }
 toml = "0.8.20"
+
+[profile.release]
+strip = true  # Automatically strip symbols from the binary.
+lto = true  # Enable link-time optimization.
+codegen-units = 1  # Set the number of codegen units to 1.
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target }{ archive-suffix }"
+bin-dir = "{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+disabled-strategies = ["quick-install"]
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"

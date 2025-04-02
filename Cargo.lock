@@ -1043,7 +1043,7 @@ dependencies = [
 
 [[package]]
 name = "rustacean-roulette"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "env_logger",
  "frankenstein",
