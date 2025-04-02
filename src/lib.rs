@@ -75,6 +75,7 @@ impl Roulette {
         );
 
         self.position = 0;
+        self.contents.fill(false);
         self.contents.resize(self.chambers, false);
 
         // Randomly choose `bullets` chambers to be loaded with bullets.
@@ -127,7 +128,7 @@ impl Roulette {
         let filled = self
             .contents
             .iter()
-            .skip(self.position)
+            .skip(self.position) // FIXME: ?
             .filter(|&&x| x)
             .count();
         let left = self.contents.len() - self.position;
@@ -231,7 +232,6 @@ mod tests {
 
         assert_eq!(roulette.fire(), Some(false));
         assert_eq!(roulette.fire(), Some(true));
-        // assert_eq!(roulette.fire(), Some(false)); // Early reload
         assert_eq!(roulette.fire(), None);
         assert_eq!(roulette.fire(), None);
     }
@@ -242,7 +242,20 @@ mod tests {
 
         roulette.restart();
         assert_eq!(roulette.contents.len(), 6);
-        assert_eq!(roulette.contents.iter().filter(|&&x| x).count(), 2);
+        assert_eq!(roulette.peek().0, 2);
+        assert_eq!(roulette.position, 0);
+    }
+
+    #[test]
+    fn test_multi_restart() {
+        let mut roulette = Roulette::default();
+
+        for _ in 0..10 {
+            roulette.restart();
+        }
+
+        assert_eq!(roulette.contents.len(), 6);
+        assert_eq!(roulette.peek().0, 2);
         assert_eq!(roulette.position, 0);
     }
 }
