@@ -1,12 +1,11 @@
 mod commands;
-mod defaults;
+mod constants;
 
 pub use commands::Commands;
 use frankenstein::{
     AsyncTelegramApi, Error,
     client_reqwest::Bot,
     methods::{SetMyCommandsParams, SetMyDefaultAdministratorRightsParams},
-    types::ChatAdministratorRights,
 };
 use rand::{Rng, seq::index::sample};
 use serde::Deserialize;
@@ -29,16 +28,16 @@ pub struct Config {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Roulette {
     /// Number of chambers in the revolver.
-    #[serde(default = "defaults::chambers")]
+    #[serde(default = "constants::chambers")]
     chambers: usize,
     /// Number of bullets in the revolver.
-    #[serde(default = "defaults::bullets")]
+    #[serde(default = "constants::bullets")]
     bullets: usize,
     /// Minimum time to mute in seconds.
-    #[serde(default = "defaults::min_mute_time")]
+    #[serde(default = "constants::min_mute_time")]
     min_mute_time: u32,
     /// Maximum time to mute in seconds.
-    #[serde(default = "defaults::max_mute_time")]
+    #[serde(default = "constants::max_mute_time")]
     max_mute_time: u32,
     /// An array of boolean values representing the contents of the chambers. `true` means the chamber is loaded with a bullet, `false` means it is empty.
     #[serde(skip)]
@@ -139,10 +138,10 @@ impl Roulette {
 impl Default for Roulette {
     fn default() -> Self {
         Roulette {
-            chambers: defaults::chambers(),
-            bullets: defaults::bullets(),
-            min_mute_time: defaults::min_mute_time(),
-            max_mute_time: defaults::max_mute_time(),
+            chambers: constants::chambers(),
+            bullets: constants::bullets(),
+            min_mute_time: constants::min_mute_time(),
+            max_mute_time: constants::max_mute_time(),
             contents: vec![],
             position: 0,
         }
@@ -197,18 +196,8 @@ pub async fn init_commands_and_rights(bot: &Bot) -> Result<(), Error> {
         .build();
     bot.set_my_commands(&commands_param).await?;
 
-    let rights = ChatAdministratorRights::builder()
-        .is_anonymous(false)
-        .can_manage_chat(false)
-        .can_delete_messages(false)
-        .can_manage_video_chats(false)
-        .can_restrict_members(true) // Required
-        .can_promote_members(false)
-        .can_change_info(false)
-        .can_invite_users(false)
-        .build();
     let rights_param = SetMyDefaultAdministratorRightsParams::builder()
-        .rights(rights)
+        .rights(constants::RECOMMENDED_ADMIN_RIGHTS)
         .build();
     bot.set_my_default_administrator_rights(&rights_param)
         .await?;

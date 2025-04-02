@@ -1,9 +1,10 @@
 use super::{Command, Roulette};
+use crate::constants::RESTRICTED_PERM;
 use frankenstein::{
     AsyncTelegramApi,
     client_reqwest::Bot,
     methods::{GetChatMemberParams, RestrictChatMemberParams},
-    types::{ChatMember, ChatPermissions, Message},
+    types::{ChatMember, Message},
 };
 use log::{error, info};
 use tokio::sync::Mutex;
@@ -15,22 +16,6 @@ impl Command for RouletteCommand {
     const TRIGGER: &'static str = "roulette";
     const HELP: &'static str = "Joins the roulette game.";
     async fn execute(bot: &Bot, msg: Message, roulette: &Mutex<Roulette>) -> Option<String> {
-        const RESTRICTED_PERM: ChatPermissions = ChatPermissions {
-            can_send_messages: Some(false),
-            can_send_audios: Some(false),
-            can_send_documents: Some(false),
-            can_send_photos: Some(false),
-            can_send_videos: Some(false),
-            can_send_video_notes: Some(false),
-            can_send_voice_notes: Some(false),
-            can_send_polls: Some(false),
-            can_send_other_messages: Some(false),
-            can_add_web_page_previews: None,
-            can_change_info: None,
-            can_invite_users: None,
-            can_pin_messages: None,
-            can_manage_topics: None,
-        };
         // Get chat and sender
         let chat = &msg.chat;
         let Some(sender) = &msg.from else {
