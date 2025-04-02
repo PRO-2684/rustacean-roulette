@@ -7,7 +7,9 @@ use frankenstein::{
     updates::UpdateContent,
 };
 use log::{debug, error, info};
-use rustacean_roulette::{Commands, Config, GroupConfig, Roulette, init_commands_and_rights};
+use rustacean_roulette::{
+    Commands, Config, GroupConfig, Roulette, RouletteConfig, init_commands_and_rights,
+};
 use std::{collections::HashMap, io::Write};
 use tokio::sync::Mutex;
 use toml::de;
@@ -123,7 +125,7 @@ fn read_config() -> Config {
 async fn init_group_data(
     bot: &Bot,
     user_id: u64,
-    default_config: Roulette,
+    default_config: RouletteConfig,
     groups: Vec<GroupConfig>,
 ) -> HashMap<i64, Mutex<Roulette>> {
     // Group-wise data (mapping group ID to Roulette instance)
@@ -162,14 +164,21 @@ async fn init_group_data(
             _ => false,
         };
         if !can_restrict {
-            info!("Bot cannot restrict members in group <{group_id}>, ignoring");
+            error!("Bot cannot restrict members in group <{group_id}>, ignoring");
             continue;
         }
 
         // Start a new game for each group
-        let mut game = group_config.resolve(&default_config);
-        game.restart();
-        group_data.insert(group_id, Mutex::new(game));
+        let resolved = group_config.resolve(&default_config);
+        match resolved.start() {
+            Ok(game) => {
+                group_data.insert(group_id, Mutex::new(game));
+                debug!("Group <{group_id}> initialized");
+            }
+            Err(err) => {
+                error!("Failed to start game for group <{group_id}>: {err}");
+            }
+        }
     }
 
     group_data

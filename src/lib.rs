@@ -18,15 +18,15 @@ pub struct Config {
     pub token: String,
     /// The configuration for the Russian Roulette game.
     #[serde(default)]
-    pub game: Roulette,
+    pub game: RouletteConfig,
     /// The override configuration for groups.
     #[serde(default)]
     pub groups: Vec<GroupConfig>,
 }
 
-/// A Russian Roulette game.
+/// Configuration for the Russian Roulette game.
 #[derive(Clone, Debug, Deserialize)]
-pub struct Roulette {
+pub struct RouletteConfig {
     /// Number of chambers in the revolver.
     #[serde(default = "constants::chambers")]
     chambers: usize,
@@ -39,50 +39,42 @@ pub struct Roulette {
     /// Maximum time to mute in seconds.
     #[serde(default = "constants::max_mute_time")]
     max_mute_time: u32,
-    /// An array of boolean values representing the contents of the chambers. `true` means the chamber is loaded with a bullet, `false` means it is empty.
-    #[serde(skip)]
-    contents: Vec<bool>,
-    /// The current chamber index.
-    #[serde(skip)]
-    position: usize,
 }
 
-impl Roulette {
-    /// (Re-)Start a new game of Russian Roulette.
-    pub fn restart(&mut self) {
+impl RouletteConfig {
+    /// Starts a new game of Russian Roulette.
+    pub fn start(self) -> Result<Roulette, &'static str> {
         // Sanity check
-        assert!(
-            self.chambers > 0,
-            "Number of chambers must be greater than 0"
-        );
-        assert!(self.bullets > 0, "Number of bullets must be greater than 0");
-        assert!(
-            self.bullets <= self.chambers,
-            "Number of bullets must be less than or equal to number of chambers"
-        );
-        assert!(
-            self.min_mute_time >= 30,
-            "Minimum mute time must be greater than or equal to 30 seconds"
-        );
-        assert!(
-            self.max_mute_time <= 3600,
-            "Maximum mute time must be less than or equal to 3600 seconds"
-        ); // FIXME: 365 days
-        assert!(
-            self.min_mute_time <= self.max_mute_time,
-            "Minimum mute time must be less than or equal to maximum mute time"
-        );
-
-        self.position = 0;
-        self.contents.fill(false);
-        self.contents.resize(self.chambers, false);
-
-        // Randomly choose `bullets` chambers to be loaded with bullets.
-        let mut rng = rand::rng();
-        let selected = sample(&mut rng, self.chambers, self.bullets);
-        for i in selected {
-            self.contents[i] = true;
+        if self.chambers <= 0 {
+            return Err("Number of chambers must be greater than 0");
         }
+        if self.bullets <= 0 {
+            return Err("Number of bullets must be greater than 0");
+        }
+        if self.bullets > self.chambers {
+            return Err("Number of bullets must be less than or equal to number of chambers");
+        }
+        if self.min_mute_time < 30 {
+            return Err("Minimum mute time must be greater than or equal to 30 seconds");
+        }
+        if self.max_mute_time > 3600 {
+            // FIXME: 365 days
+            return Err("Maximum mute time must be less than or equal to 3600 seconds");
+        }
+        if self.min_mute_time > self.max_mute_time {
+            return Err("Minimum mute time must be less than or equal to maximum mute time");
+        }
+
+        // Initialize the contents of the chambers
+        let contents = vec![false; self.chambers];
+        let mut roulette = Roulette {
+            config: self,
+            contents,
+            position: 0,
+        };
+        roulette.restart();
+
+        Ok(roulette)
     }
 
     /// Get the number of bullets and chambers.
@@ -103,6 +95,53 @@ impl Roulette {
             .expect("Time went backwards")
             .as_secs();
         (duration, now + duration)
+    }
+}
+
+impl Default for RouletteConfig {
+    fn default() -> Self {
+        Self {
+            chambers: constants::chambers(),
+            bullets: constants::bullets(),
+            min_mute_time: constants::min_mute_time(),
+            max_mute_time: constants::max_mute_time(),
+        }
+    }
+}
+
+/// A Russian Roulette game.
+#[derive(Clone, Debug)]
+pub struct Roulette {
+    /// Configuration for the game.
+    pub config: RouletteConfig,
+    /// An array of boolean values representing the contents of the chambers. `true` means the chamber is loaded with a bullet, `false` means it is empty.
+    contents: Vec<bool>,
+    /// The current chamber index.
+    position: usize,
+}
+
+impl Roulette {
+    /// Restart the Russian Roulette game.
+    pub fn restart(&mut self) {
+        self.position = 0;
+        self.contents.fill(false);
+
+        // Randomly choose `bullets` chambers to be loaded with bullets.
+        let mut rng = rand::rng();
+        let selected = sample(&mut rng, self.contents.len(), self.config.bullets);
+        for i in selected {
+            self.contents[i] = true;
+        }
+    }
+
+    /// Get the number of bullets and chambers.
+    pub fn info(&self) -> (usize, usize) {
+        self.config.info()
+    }
+
+    /// Generate a random mute time and the time until which the user will be muted.
+    pub fn random_mute_until(&self) -> (u64, u64) {
+        self.config.random_mute_until()
     }
 
     /// Try to fire the current chamber.
@@ -127,24 +166,11 @@ impl Roulette {
         let filled = self
             .contents
             .iter()
-            .skip(self.position) // FIXME: ?
+            .skip(self.position)
             .filter(|&&x| x)
             .count();
         let left = self.contents.len() - self.position;
         (filled, left)
-    }
-}
-
-impl Default for Roulette {
-    fn default() -> Self {
-        Roulette {
-            chambers: constants::chambers(),
-            bullets: constants::bullets(),
-            min_mute_time: constants::min_mute_time(),
-            max_mute_time: constants::max_mute_time(),
-            contents: vec![],
-            position: 0,
-        }
     }
 }
 
@@ -165,7 +191,7 @@ pub struct GroupConfig {
 
 impl GroupConfig {
     /// Resolves to a [`RouletteConfig`].
-    pub fn resolve(&self, default: &Roulette) -> Roulette {
+    pub fn resolve(&self, default: &RouletteConfig) -> RouletteConfig {
         let Self {
             chambers,
             bullets,
@@ -179,12 +205,11 @@ impl GroupConfig {
             min_mute_time.unwrap_or(default.min_mute_time),
             max_mute_time.unwrap_or(default.max_mute_time),
         );
-        Roulette {
+        RouletteConfig {
             chambers,
             bullets,
             min_mute_time,
             max_mute_time,
-            ..Default::default()
         }
     }
 }
@@ -211,12 +236,17 @@ mod tests {
 
     #[test]
     fn test_fire() {
-        let mut roulette = Roulette {
-            contents: vec![false, true, false],
-            position: 0,
+        let config = RouletteConfig {
             chambers: 3,
             bullets: 1,
-            ..Default::default()
+            min_mute_time: 60,
+            max_mute_time: 600,
+        };
+        // let mut roulette = config.start().unwrap();
+        let mut roulette = Roulette {
+            config,
+            contents: vec![false, true, false],
+            position: 0,
         };
 
         assert_eq!(roulette.fire(), Some(false));
@@ -227,17 +257,7 @@ mod tests {
 
     #[test]
     fn test_restart() {
-        let mut roulette = Roulette::default();
-
-        roulette.restart();
-        assert_eq!(roulette.contents.len(), 6);
-        assert_eq!(roulette.peek().0, 2);
-        assert_eq!(roulette.position, 0);
-    }
-
-    #[test]
-    fn test_multi_restart() {
-        let mut roulette = Roulette::default();
+        let mut roulette = RouletteConfig::default().start().unwrap();
 
         for _ in 0..10 {
             roulette.restart();
