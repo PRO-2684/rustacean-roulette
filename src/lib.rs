@@ -31,6 +31,9 @@ pub struct RouletteConfig {
     /// Number of bullets in the revolver.
     #[serde(default = "constants::bullets")]
     bullets: usize,
+    /// Probability of the gun getting jammed.
+    #[serde(default = "constants::jam_probability")]
+    jam_probability: f64,
     /// Minimum time to mute in seconds.
     #[serde(default = "constants::min_mute_time")]
     min_mute_time: u32,
@@ -70,7 +73,7 @@ impl RouletteConfig {
             contents,
             position: 0,
         };
-        roulette.restart();
+        roulette.reload();
 
         Ok(roulette)
     }
@@ -101,6 +104,7 @@ impl Default for RouletteConfig {
         Self {
             chambers: constants::chambers(),
             bullets: constants::bullets(),
+            jam_probability: constants::jam_probability(),
             min_mute_time: constants::min_mute_time(),
             max_mute_time: constants::max_mute_time(),
         }
@@ -111,7 +115,7 @@ impl Default for RouletteConfig {
 #[derive(Clone, Debug)]
 pub struct Roulette {
     /// Configuration for the game.
-    pub config: RouletteConfig,
+    config: RouletteConfig,
     /// An array of boolean values representing the contents of the chambers. `true` means the chamber is loaded with a bullet, `false` means it is empty.
     contents: Vec<bool>,
     /// The current chamber index.
@@ -119,8 +123,8 @@ pub struct Roulette {
 }
 
 impl Roulette {
-    /// Restart the Russian Roulette game.
-    pub fn restart(&mut self) {
+    /// Reload the revolver.
+    pub fn reload(&mut self) {
         self.position = 0;
         self.contents.fill(false);
 
@@ -147,29 +151,51 @@ impl Roulette {
     /// - If the chamber is loaded with a bullet, return `Some(true)`
     /// - If the chamber is empty, return `Some(false)`
     /// - If we have fired all filled chambers, return `None`
-    pub fn fire(&mut self) -> Option<bool> {
+    pub fn fire(&mut self) -> FireResult {
         if self.peek().0 == 0 {
             // No filled chambers left
-            return None;
+            return FireResult::NoBullets;
+        }
+
+        // Check if the gun is jammed
+        let jammed = rand::rng().random_bool(self.config.jam_probability);
+        if jammed {
+            return FireResult::Jammed;
         }
 
         let result = self.contents[self.position];
         self.position += 1;
 
-        Some(result)
+        if result {
+            FireResult::Bullet
+        } else {
+            FireResult::Empty
+        }
     }
 
     /// Peek the left-over chambers, returning count of filled and left chambers.
     pub fn peek(&self) -> (usize, usize) {
         let filled = self
-            .contents
+            .contents[self.position..]
             .iter()
-            .skip(self.position)
             .filter(|&&x| x)
             .count();
         let left = self.contents.len() - self.position;
         (filled, left)
     }
+}
+
+/// Result of firing the revolver.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FireResult {
+    /// The chamber was empty.
+    Empty,
+    /// The chamber was loaded with a bullet.
+    Bullet,
+    /// The gun got jammed.
+    Jammed,
+    /// No more bullets left.
+    NoBullets,
 }
 
 /// Configuration for a group.
@@ -181,6 +207,8 @@ pub struct GroupConfig {
     chambers: Option<usize>,
     /// Override number of bullets in the revolver.
     bullets: Option<usize>,
+    /// Override probability of the gun getting jammed.
+    jam_probability: Option<f64>,
     /// Override minimum time to mute in seconds.
     min_mute_time: Option<u32>,
     /// Override maximum time to mute in seconds.
@@ -193,19 +221,22 @@ impl GroupConfig {
         let Self {
             chambers,
             bullets,
+            jam_probability,
             min_mute_time,
             max_mute_time,
             ..
         } = self;
-        let (chambers, bullets, min_mute_time, max_mute_time) = (
+        let (chambers, bullets, jam_probability, min_mute_time, max_mute_time) = (
             chambers.unwrap_or(default.chambers),
             bullets.unwrap_or(default.bullets),
+            jam_probability.unwrap_or(default.jam_probability),
             min_mute_time.unwrap_or(default.min_mute_time),
             max_mute_time.unwrap_or(default.max_mute_time),
         );
         RouletteConfig {
             chambers,
             bullets,
+            jam_probability,
             min_mute_time,
             max_mute_time,
         }
@@ -241,6 +272,7 @@ mod tests {
         let config = RouletteConfig {
             chambers: 3,
             bullets: 1,
+            jam_probability: 0.0, // For testing purposes
             min_mute_time: 60,
             max_mute_time: 600,
         };
@@ -251,10 +283,10 @@ mod tests {
             position: 0,
         };
 
-        assert_eq!(roulette.fire(), Some(false));
-        assert_eq!(roulette.fire(), Some(true));
-        assert_eq!(roulette.fire(), None);
-        assert_eq!(roulette.fire(), None);
+        assert_eq!(roulette.fire(), FireResult::Empty);
+        assert_eq!(roulette.fire(), FireResult::Bullet);
+        assert_eq!(roulette.fire(), FireResult::NoBullets);
+        assert_eq!(roulette.fire(), FireResult::NoBullets);
     }
 
     #[test]
@@ -262,7 +294,7 @@ mod tests {
         let mut roulette = RouletteConfig::default().start().unwrap();
 
         for _ in 0..10 {
-            roulette.restart();
+            roulette.reload();
         }
 
         assert_eq!(roulette.contents.len(), 6);

@@ -12,6 +12,11 @@ pub fn bullets() -> usize {
     2
 }
 
+/// Default probability of the gun getting jammed.
+pub fn jam_probability() -> f64 {
+    0.05 
+}
+
 /// Default minimum time to mute in seconds.
 pub fn min_mute_time() -> u32 {
     60

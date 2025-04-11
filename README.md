@@ -30,6 +30,7 @@ token = "" # Telegram bot token, required
 [game] # Game configuration, optional
 chambers = 6 # Number of chambers in the revolver
 bullets = 2 # Number of bullets in the revolver
+jam_probability = 0.05 # Probability of the gun getting jammed
 min_mute_time = 60 # Minimum mute time in seconds
 max_mute_time = 600 # Maximum mute time in seconds
 
@@ -58,5 +59,4 @@ Where `/path/to/config.toml` is the path to your configuration file. Defaults to
 ## TODO
 
 - Random bullets number
-- Probability of gun getting jammed
 - `/help`

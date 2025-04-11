@@ -8,6 +8,7 @@ use frankenstein::{
 };
 use log::{error, info};
 use tokio::sync::Mutex;
+use crate::FireResult;
 
 /// Joins the roulette game.
 pub struct RouletteCommand;
@@ -46,23 +47,11 @@ impl Command for RouletteCommand {
         }
         // Check the roulette status
         let mut roulette = roulette.lock().await;
-        let result = match roulette.fire() {
-            Some(result) => result,
-            None => {
-                // This should never happen, but just in case
-                error!("Failed to fire the roulette: {roulette:?}");
-                // Reload the gun
-                roulette.restart();
-                let (bullets, chambers) = roulette.info();
-                return Some(format!(
-                    "You're lucky that the gun got jammed. The gun has been reloaded, with {bullets} bullets in {chambers} chambers."
-                ));
-            }
-        };
+        let result = roulette.fire();
 
         // Reload the gun if empty
         let reload_tip = if roulette.peek().0 == 0 {
-            roulette.restart();
+            roulette.reload();
             let (bullets, chambers) = roulette.info();
             format!(" The gun has been reloaded, with {bullets} bullets in {chambers} chambers.")
         } else {
@@ -72,30 +61,40 @@ impl Command for RouletteCommand {
         // Apply action and return the message
         let name = sender.username.as_deref();
         let name = name.unwrap_or(&sender.first_name);
-        if result {
-            // Restrict the user for a certain period
-            let (duration, until) = roulette.random_mute_until();
-            let restrict_param = RestrictChatMemberParams::builder()
-                .chat_id(chat.id)
-                .user_id(sender.id)
-                .permissions(RESTRICTED_PERM)
-                .until_date(until)
-                .build();
-            match bot.restrict_chat_member(&restrict_param).await {
-                Ok(_) => {
-                    info!(
-                        "Restricted user {name} for {duration}s in group <{}>",
-                        chat.id
-                    );
-                }
-                Err(err) => {
-                    error!("Failed to restrict user {name}: {err}");
-                    return None;
-                }
-            };
-            Some(format!("Bang! {name} was shot and muted for {duration}s.",) + &reload_tip)
-        } else {
-            Some(format!("Click! {name} is safe and sound.",) + &reload_tip)
+        match result {
+            FireResult::Bullet => {
+                // Restrict the user for a certain period
+                let (duration, until) = roulette.random_mute_until();
+                let restrict_param = RestrictChatMemberParams::builder()
+                    .chat_id(chat.id)
+                    .user_id(sender.id)
+                    .permissions(RESTRICTED_PERM)
+                    .until_date(until)
+                    .build();
+                match bot.restrict_chat_member(&restrict_param).await {
+                    Ok(_) => {
+                        info!(
+                            "Restricted user {name} for {duration}s in group <{}>",
+                            chat.id
+                        );
+                    }
+                    Err(err) => {
+                        error!("Failed to restrict user {name}: {err}");
+                        return None;
+                    }
+                };
+                Some(format!("Bang! {name} was shot and muted for {duration}s.",) + &reload_tip)
+            },
+            FireResult::Empty => {
+                Some(format!("Click! {name} is safe and sound.",) + &reload_tip)
+            },
+            FireResult::Jammed => {
+                Some(format!("Click? You're lucky that the gun got jammed.",) + &reload_tip)
+            },
+            FireResult::NoBullets => {
+                // This should not happen, but just in case
+                Some(format!("Click? The gun is somehow empty...",) + &reload_tip)
+            },
         }
     }
 }

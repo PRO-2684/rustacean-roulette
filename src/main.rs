@@ -31,9 +31,7 @@ async fn main() -> Result<(), Error> {
         panic!("Failed to get bot username");
     };
 
-    // Set bot commands
     init_commands_and_rights(bot).await?;
-
     let group_data = init_group_data(bot, me.id, default_config, groups).await;
     let group_data: &_ = Box::leak(Box::new(group_data));
     info!("Bot started: @{username}");
