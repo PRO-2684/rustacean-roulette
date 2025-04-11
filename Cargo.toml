@@ -1,6 +1,6 @@
 [package]
 name = "rustacean-roulette"
-version = "0.1.1"
+version = "0.1.2"
 readme = "README.md"
 description = "A simple Russian Roulette Telegram bot implemented in Rust."
 keywords = ["russian-roulette", "telegram-bot", "game", "games", "cli"]
@@ -12,12 +12,12 @@ license = "MIT"
 authors = ["PRO-2684"]
 
 [dependencies]
-env_logger = "0.11.7"
+env_logger = "0.11.8"
 frankenstein = { version = "0.40.0", features = ["client-reqwest"] }
 log = "0.4.27"
 rand = "0.9.0"
 serde = { version = "1.0.219", features = ["derive"] }
-tokio = { version = "1.44.1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros"] }
 toml = "0.8.20"
 
 [profile.release]
